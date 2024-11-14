@@ -1,0 +1,71 @@
+name: "Setup Git User"
+author: "Ralsnet"
+description: "Setup git user and ssh credentials for access to GitHub."
+
+inputs:
+  user-name:
+    description: >
+      The user name to set as `git config --global user.name`.
+      Default is "machine-user[bot]".
+    required: false
+    default: "machine-user[bot]"
+  user-email:
+    description: >
+      The user email to set as `git config --global user.email`.
+      Default is "machine-user[bot]@users.noreply.github.com".
+    required: false
+    default: "machine-user[bot]@users.noreply.github.com"
+  ssh-user:
+    description: >
+      The SSH user to use for authentication.
+      Default is "git".
+    required: false
+    default: "git"
+  ssh-host:
+    description: >
+      The SSH host to use for authentication.
+      Default is "github.com".
+    required: false
+    default: "github.com"
+  private-key:
+    description: >
+      The private key to use for SSH authentication.
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup git user
+      run: |
+        git config --global user.name "$USER_NAME"
+        git config --global user.email "$USER_EMAIL"
+      shell: bash
+      env:
+        USER_NAME: ${{ inputs.user-name }}
+        USER_EMAIL: ${{ inputs.user-email }}
+
+    - name: Setup ssh credentials
+      run: |
+        mkdir -p ~/.ssh
+        echo "$PRIVATE_KEY" > ~/.ssh/private-key.pem
+        echo "Host $SSH_HOST" >> ~/.ssh/config
+        echo "  HostName $SSH_HOST" >> ~/.ssh/config
+        echo "  User $SSH_USER" >> ~/.ssh/config
+        echo "  IdentityFile ~/.ssh/private-key.pem" >> ~/.ssh/config
+        echo "  IdentitiesOnly yes" >> ~/.ssh/config
+        chmod 700 ~/.ssh
+        chmod 600 ~/.ssh/config
+        chmod 600 ~/.ssh/private-key.pem
+      shell: bash
+      env:
+        PRIVATE_KEY: ${{ inputs.private-key }}
+        SSH_HOST: ${{ inputs.ssh-host }}
+        SSH_USER: ${{ inputs.ssh-user }}
+
+    - name: Confirm ssh credentials
+      run: |
+        echo "$(ssh -T $SSH_USER@$SSH_HOST 2>&1 || true)" | grep "You've successfully authenticated"
+      shell: bash
+      env:
+        SSH_HOST: ${{ inputs.ssh-host }}
+        SSH_USER: ${{ inputs.ssh-user }}
